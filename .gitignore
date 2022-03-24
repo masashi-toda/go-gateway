@@ -1,0 +1,16 @@
+vendor
+bin/
+tools/
+
+# Temporary files
+*.log
+cover.out
+cover.html
+
+# terraform
+.terraform
+terraform.tfstate*
+
+# IDE Editor
+.vscode/
+.idea/
