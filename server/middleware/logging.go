@@ -1,26 +1,24 @@
 package middleware
 
 import (
+	"bytes"
 	"io"
-	"net"
-	"net/http"
 	"os"
-	"strings"
 	"time"
 
-	"github.com/rs/zerolog"
-
 	"github.com/masashi-toda/go-gateway/server"
+	"github.com/masashi-toda/go-gateway/server/api"
+	"github.com/masashi-toda/go-gateway/server/logger"
+	"github.com/masashi-toda/go-gateway/server/system"
 )
 
-var NowFunc = time.Now
+type IsLoggingReqBodyFunc func(*api.Request) bool
 
-func AccessLog(out io.Writer) server.MiddlewareFunc {
+func AccessLog(log *logger.Logger, skipPath []string, filter IsLoggingReqBodyFunc) server.MiddlewareFunc {
 	var (
 		hostName, _ = os.Hostname()
-		logger      = zerolog.New(out)
 		isLogging   = func(path string) bool {
-			for _, p := range []string{"/setting"} {
+			for _, p := range skipPath {
 				if p == path {
 					return false
 				}
@@ -28,68 +26,38 @@ func AccessLog(out io.Writer) server.MiddlewareFunc {
 			return true
 		}
 	)
-	return func(next http.HandlerFunc) http.HandlerFunc {
-		return func(writer http.ResponseWriter, req *http.Request) {
+	return func(next server.HandlerFunc) server.HandlerFunc {
+		return func(rw *api.ResponseWriter, req *api.Request) {
 			if isLogging(req.URL.Path) {
-				loggingWriter := &loggingResponseWriter{ResponseWriter: writer}
+				var (
+					body []byte
+					err  error
+				)
+				if filter(req) && req.ContentLength > 0 && req.Body != nil {
+					if body, err = io.ReadAll(req.Body); err == nil {
+						defer req.Body.Close()
+						req.Body = io.NopCloser(bytes.NewBuffer(body))
+					}
+				}
 				defer func(begin time.Time) {
-					logger.Log().
-						Time("time", begin).
+					evt := log.Info().
+						Int("status", rw.StatusCode()).
 						Str("method", req.Method).
 						Str("path", req.URL.Path).
 						Str("query", req.URL.RawQuery).
 						Str("protocol", req.Proto).
-						Str("client_ip", clientIP(req)).
+						Str("client_ip", req.ClientIP()).
 						Str("useragent", req.UserAgent()).
 						Str("referer", req.Referer()).
-						Int("status", loggingWriter.statusCode).
-						Dur("latency", NowFunc().Sub(begin)).
-						Str("server", hostName).
-						Send()
-				}(NowFunc())
-				next(loggingWriter, req)
-			} else {
-				next(writer, req)
+						Dur("latency", system.CurrentTime().Sub(begin)).
+						Str("server", hostName)
+					if len(body) > 0 {
+						evt = evt.RawJSON("body", body)
+					}
+					evt.Send()
+				}(system.CurrentTime())
 			}
+			next(rw, req)
 		}
 	}
 }
-
-type loggingRequestBody struct {
-	http.ResponseWriter
-	statusCode int
-}
-
-type loggingResponseWriter struct {
-	http.ResponseWriter
-	statusCode int
-}
-
-func (w *loggingResponseWriter) WriteHeader(statusCode int) {
-	w.statusCode = statusCode
-	w.ResponseWriter.WriteHeader(statusCode)
-}
-
-/*******************************************/
-/* helper method
-/*******************************************/
-
-func clientIP(req *http.Request) string {
-	if ip := req.Header.Get(headerXForwardedFor); ip != "" {
-		i := strings.IndexAny(ip, ",")
-		if i > 0 {
-			return strings.TrimSpace(ip[:i])
-		}
-		return ip
-	}
-	if ip := req.Header.Get(headerXRealIP); ip != "" {
-		return ip
-	}
-	ra, _, _ := net.SplitHostPort(req.RemoteAddr)
-	return ra
-}
-
-const (
-	headerXRealIP       = "X-Real-Ip"
-	headerXForwardedFor = "X-Forwarded-For"
-)

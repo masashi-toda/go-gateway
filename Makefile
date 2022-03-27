@@ -11,14 +11,14 @@ export $(shell sed 's/=.*//' $(env))
 # -----------------------------------------------------------------
 #    ENV VARIABLE
 # -----------------------------------------------------------------
-VERSION    := $(shell git describe --tags --abbrev=0 2> /dev/null || echo 0)
+VERSION    := $(shell git describe --tags --abbrev=0 2> /dev/null || echo 1.0.0-alpha)
 REVISION   := $(shell git rev-parse --short HEAD 2> /dev/null || echo 0)
 
 DESTDIR    := ./bin
 CMDDIR     := ./cmd
 SOURCEDIR  := .
 SOURCES    := $(shell find . -type f -name '*.go' | grep -v vendor)
-LDFLAGS    := -ldflags="-s -w -X 'main.version=$(VERSION)' -X 'main.revision=$(REVISION)' -X 'git.rarejob.com/rarejob-platform/rjpf-common/logger.ServiceName=event-search' -extldflags '-static'"
+LDFLAGS    := -ldflags="-s -w -X 'main.version=$(VERSION)' -X 'main.revision=$(REVISION)' -extldflags '-static'"
 NOVENDOR   := $(shell go list $(SOURCEDIR)/... | grep -v vendor)
 TOOLBINDIR := ./tools/bin
 BUILD_OPTS := -v $(LDFLAGS)
@@ -57,7 +57,11 @@ env: ## Print useful environment variables to stdout
 
 .PHONY: build ## Build golang binary files
 build: $(SOURCES)
-	@CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build $(BUILD_OPTS) -o $(DESTDIR)/app ./cmd/server/main.go
+	@CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build $(BUILD_OPTS) -o $(DESTDIR)/app ./cmd/adapter/main.go
+
+.PHONY: build-local ## Build golang binary files
+build-local: $(SOURCES)
+	@CGO_ENABLED=0 go build $(BUILD_OPTS) -o $(DESTDIR)/app ./cmd/adapter/main.go
 
 .PHONY: clean
 clean: ## Remove temporary files
