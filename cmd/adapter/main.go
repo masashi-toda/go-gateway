@@ -29,17 +29,19 @@ func main() {
 		errorHandler = func(rw *api.ResponseWriter, _ *api.Request, err error) {
 			rw.InternalServerError(err)
 		}
+		accessLogFilter = func(req *api.Request) bool {
+			return strings.HasPrefix(req.URL.Path, "/search")
+		}
+		healthCheckResp = map[string]string{
+			"name":       name,
+			"version":    version,
+			"revision":   revision,
+			"started_at": system.CurrentTime().Format(time.RFC3339),
+		}
 		middlewares = []server.MiddlewareFunc{
 			middleware.Recovery(log),
-			middleware.AccessLog(log, []string{"/"}, func(req *api.Request) bool {
-				return strings.HasPrefix(req.URL.Path, "/search")
-			}),
-			middleware.Health("/health", map[string]string{
-				"name":       name,
-				"version":    version,
-				"revision":   revision,
-				"started_at": system.CurrentTime().Format(time.RFC3339),
-			}),
+			middleware.AccessLog(log, []string{"/"}, accessLogFilter),
+			middleware.Health("/health", healthCheckResp),
 		}
 		srv = server.New(address,
 			server.WithTargetHandler(targetHandler),

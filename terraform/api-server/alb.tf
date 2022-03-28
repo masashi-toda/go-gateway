@@ -1,6 +1,7 @@
-resource "aws_alb" "front" {
-  name    = "${var.app}-${var.environment}-alb"
-  subnets = var.subnet_ids
+resource "aws_lb" "front" {
+  name               = "${var.app}-${var.environment}-alb"
+  load_balancer_type = "application"
+  subnets            = var.subnet_ids
 
   security_groups = [
     aws_security_group.front_alb.id
@@ -58,30 +59,30 @@ resource "aws_security_group" "api_server_web_sg" {
   }
 }
 
-resource "aws_alb_listener" "http" {
-  load_balancer_arn = aws_alb.front.arn
+resource "aws_lb_listener" "http" {
+  load_balancer_arn = aws_lb.front.arn
   port              = "80"
   protocol          = "HTTP"
 
   default_action {
-    target_group_arn = aws_alb_target_group.http.id
+    target_group_arn = aws_lb_target_group.http.id
     type             = "forward"
   }
 }
 
-resource "aws_alb_target_group" "http" {
+resource "aws_lb_target_group" "http" {
   name                 = "${var.app}-${var.environment}-tg"
   port                 = 8080
   protocol             = "HTTP"
   vpc_id               = var.vpc_id
   target_type          = "ip"
-  deregistration_delay = 10
+  deregistration_delay = 60
 
   health_check {
     healthy_threshold   = 5
     unhealthy_threshold = 5
     path                = "/health"
-    interval            = 10
+    interval            = 30
     timeout             = 10
   }
 

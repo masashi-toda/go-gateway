@@ -14,3 +14,11 @@ variable "app_ecr_name" {}
 variable "aws_subnet_public" {
   type = list(string)
 }
+
+variable "firelens_repo_name" {
+  default = "go-gateway/firelens"
+}
+
+variable "firelens_tag" {
+  default = "1.0"
+}
