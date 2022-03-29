@@ -105,7 +105,7 @@ resource "aws_iam_role_policy" "firehose_role_policy" {
           "logs:PutLogEvents"
         ],
         Resource = [
-          "*"
+          "${aws_cloudwatch_log_group.firehose.arn}:log-stream:*"
         ]
       }
     ]

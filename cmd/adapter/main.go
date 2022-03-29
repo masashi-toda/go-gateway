@@ -40,7 +40,7 @@ func main() {
 		}
 		middlewares = []server.MiddlewareFunc{
 			middleware.Recovery(log),
-			middleware.AccessLog(log, []string{"/"}, accessLogFilter),
+			middleware.AccessLog(log, []string{"/favicon.ico"}, accessLogFilter),
 			middleware.Health("/health", healthCheckResp),
 		}
 		srv = server.New(address,
