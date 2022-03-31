@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"net/http"
 	"net/http/httputil"
@@ -53,8 +54,11 @@ func New(address string, options ...serverOption) *Server {
 	// setup handler
 	handler := func(rw *api.ResponseWriter, req *api.Request) {
 		target, err := url.Parse(srv.targetHandler(req))
-		if err != nil {
-			srv.log.Panic().Msg("unknown target error")
+		if err != nil || target.String() == "" {
+			respErr := fmt.Errorf("Failed to parse target url")
+			srv.log.Error().Err(err).Msg(respErr.Error())
+			api.NewResponseWriter(rw).InternalServerError(respErr)
+			return
 		}
 		req.Host = target.Host
 		srv.newSingleHostReverseProxy(target).ServeHTTP(rw, req.Request)
@@ -66,7 +70,7 @@ func New(address string, options ...serverOption) *Server {
 	// setup default error handler
 	if srv.errorHandler == nil {
 		srv.errorHandler = func(rw *api.ResponseWriter, _ *api.Request, err error) {
-			srv.log.Error().Msgf("http proxy error [%s]", err.Error())
+			srv.log.Error().Err(err).Msg("http proxy error")
 			rw.BadGateway(err)
 		}
 	}

@@ -83,8 +83,8 @@ func (rw *ResponseWriter) write(status int, obj interface{}) {
 		rw.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	rw.WriteHeader(status)
 	rw.Header().Set("Content-Type", "application/json")
+	rw.WriteHeader(status)
 	if body != nil {
 		if _, err := rw.Write(body); err != nil {
 			logger.Default().Error().Msgf("Failed to write response body [%s]", err.Error())

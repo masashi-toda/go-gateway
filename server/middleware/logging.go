@@ -3,27 +3,37 @@ package middleware
 import (
 	"bytes"
 	"io"
-	"os"
+	"net/http"
 	"time"
 
 	"github.com/masashi-toda/go-gateway/server"
 	"github.com/masashi-toda/go-gateway/server/api"
 	"github.com/masashi-toda/go-gateway/server/logger"
 	"github.com/masashi-toda/go-gateway/server/system"
+	"github.com/rs/zerolog"
 )
 
 type IsLoggingReqBodyFunc func(*api.Request) bool
 
 func AccessLog(log *logger.Logger, skipPath []string, filter IsLoggingReqBodyFunc) server.MiddlewareFunc {
 	var (
-		hostName, _ = os.Hostname()
-		isLogging   = func(path string) bool {
+		isLogging = func(path string) bool {
 			for _, p := range skipPath {
 				if p == path {
 					return false
 				}
 			}
 			return true
+		}
+		logEvent = func(status int) *zerolog.Event {
+			switch {
+			case status >= http.StatusBadRequest && status < http.StatusInternalServerError:
+				return log.Error()
+			case status >= http.StatusInternalServerError:
+				return log.Error()
+			default:
+				return log.Info()
+			}
 		}
 	)
 	return func(next server.HandlerFunc) server.HandlerFunc {
@@ -40,7 +50,7 @@ func AccessLog(log *logger.Logger, skipPath []string, filter IsLoggingReqBodyFun
 					}
 				}
 				defer func(begin time.Time) {
-					evt := log.Info().
+					evt := logEvent(rw.StatusCode()).
 						Int("status", rw.StatusCode()).
 						Str("method", req.Method).
 						Str("path", req.URL.Path).
@@ -50,7 +60,7 @@ func AccessLog(log *logger.Logger, skipPath []string, filter IsLoggingReqBodyFun
 						Str("useragent", req.UserAgent()).
 						Str("referer", req.Referer()).
 						Dur("latency", system.CurrentTime().Sub(begin)).
-						Str("server", hostName)
+						Str("host", req.Host)
 					if len(body) > 0 {
 						evt = evt.RawJSON("body", body)
 					}

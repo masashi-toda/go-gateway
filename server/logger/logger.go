@@ -16,7 +16,7 @@ var (
 
 func New(out io.Writer) *Logger {
 	return &Logger{
-		internal: zerolog.New(out).With().Str("server", hostName).Logger(),
+		internal: zerolog.New(out),
 	}
 }
 
@@ -24,46 +24,37 @@ func Default() *Logger {
 	return defaultLogger
 }
 
+func SetupDefaultLogger(out io.Writer) {
+	defaultLogger = New(out)
+}
+
 type Logger struct {
-	internal zerolog.Logger
+	internal      zerolog.Logger
+	withHostName  bool
+	withTimestamp bool
 }
 
 func (l *Logger) Debug() *zerolog.Event {
-	return l.logEvent(zerolog.DebugLevel)
+	return withParams(l.internal.Debug())
 }
 
 func (l *Logger) Info() *zerolog.Event {
-	return l.logEvent(zerolog.InfoLevel)
+	return withParams(l.internal.Info())
 }
 
 func (l *Logger) Warn() *zerolog.Event {
-	return l.logEvent(zerolog.WarnLevel)
+	return withParams(l.internal.Warn())
 }
 
 func (l *Logger) Error() *zerolog.Event {
-	return l.logEvent(zerolog.ErrorLevel)
+	return withParams(l.internal.Error())
 }
 
 func (l *Logger) Panic() *zerolog.Event {
-	return l.logEvent(zerolog.PanicLevel)
+	return withParams(l.internal.Panic())
 }
 
-func (l *Logger) Fatal() *zerolog.Event {
-	return l.logEvent(zerolog.FatalLevel)
-}
-
-func (l *Logger) NoLevel() *zerolog.Event {
-	return l.logEvent(zerolog.NoLevel)
-}
-
-func (l *Logger) Disabled() *zerolog.Event {
-	return l.logEvent(zerolog.Disabled)
-}
-
-func (l *Logger) logEvent(level zerolog.Level) *zerolog.Event {
-	return l.internal.WithLevel(level).Timestamp()
-}
-
-func init() {
-	zerolog.TimestampFunc = system.CurrentTime
+func withParams(evt *zerolog.Event) *zerolog.Event {
+	return evt.Time("time", system.CurrentTime()).
+		Str("server", hostName)
 }
