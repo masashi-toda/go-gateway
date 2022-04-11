@@ -1,7 +1,9 @@
 package api
 
 import (
+	"bufio"
 	"encoding/json"
+	"net"
 	"net/http"
 	"strings"
 
@@ -9,16 +11,22 @@ import (
 )
 
 func NewResponseWriter(rw http.ResponseWriter) *ResponseWriter {
-	return &ResponseWriter{ResponseWriter: rw}
+	return &ResponseWriter{writer: rw}
 }
 
 type ResponseWriter struct {
-	http.ResponseWriter
+	writer     http.ResponseWriter
 	statusCode int
+	size       int64
+	committed  bool
 }
 
 func (rw *ResponseWriter) StatusCode() int {
 	return rw.statusCode
+}
+
+func (rw *ResponseWriter) Size() int64 {
+	return rw.size
 }
 
 // OK is ...
@@ -71,11 +79,9 @@ func (rw *ResponseWriter) BadGateway(err error) {
 	rw.write(http.StatusBadGateway, err)
 }
 
-func (rw *ResponseWriter) WriteHeader(statusCode int) {
-	rw.statusCode = statusCode
-	rw.ResponseWriter.WriteHeader(statusCode)
-}
-
+/***********************************************
+# Private functions
+************************************************/
 func (rw *ResponseWriter) write(status int, obj interface{}) {
 	body, err := toByteBody(obj)
 	if err != nil {
@@ -113,4 +119,44 @@ func toByteBody(obj interface{}) ([]byte, error) {
 	default:
 		return json.Marshal(obj)
 	}
+}
+
+/***********************************************
+# Override ResponseWriter functions
+************************************************/
+func (rw *ResponseWriter) Header() http.Header {
+	return rw.writer.Header()
+}
+
+func (rw *ResponseWriter) WriteHeader(statusCode int) {
+	if rw.committed {
+		logger.Default().Warn().Msg("response already committed")
+		return
+	}
+	rw.statusCode = statusCode
+	rw.writer.WriteHeader(statusCode)
+	rw.committed = true
+}
+
+func (rw *ResponseWriter) Write(raw []byte) (len int, err error) {
+	if !rw.committed {
+		rw.WriteHeader(http.StatusOK)
+	}
+	len, err = rw.writer.Write(raw)
+	rw.size += int64(len)
+	return
+}
+
+// Flush implements the http.Flusher interface to allow an HTTP handler to flush
+// buffered data to the client.
+// See [http.Flusher](https://golang.org/pkg/net/http/#Flusher)
+func (rw *ResponseWriter) Flush() {
+	rw.writer.(http.Flusher).Flush()
+}
+
+// Hijack implements the http.Hijacker interface to allow an HTTP handler to
+// take over the connection.
+// See [http.Hijacker](https://golang.org/pkg/net/http/#Hijacker)
+func (rw *ResponseWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	return rw.writer.(http.Hijacker).Hijack()
 }

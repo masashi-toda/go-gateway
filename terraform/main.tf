@@ -1,28 +1,21 @@
 terraform {
   required_version = ">= 1.0.0"
+
   required_providers {
     aws = {
       source  = "hashicorp/aws"
       version = "3.71.0"
     }
   }
+  backend "s3" {}
 }
 
 provider "aws" {
-  region  = var.region
-  profile = var.profile
+  region  = var.aws_region
+  profile = var.aws_profile
 }
 
-data "aws_availability_zones" "available" {
-}
-
-locals {
-}
-
-resource "random_string" "suffix" {
-  length  = 8
-  special = false
-}
+data "aws_availability_zones" "available" {}
 
 data "aws_security_group" "default" {
   name   = "default"
@@ -56,14 +49,30 @@ module "vpc" {
 
 # for test application, if necessary
 module "ecr_api_server" {
-  source               = "./api-server"
-  group                = var.group
-  app                  = var.app
-  environment          = var.environment
-  owner                = var.owner
-  vpc_id               = module.vpc.vpc_id
-  subnet_ids           = module.vpc.public_subnets
-  aws_subnet_public    = var.aws_subnet_public
-  app_ecs_cluster_name = var.app_ecs_cluster_name
-  app_ecr_name         = var.app_ecr_name
+  source         = "./api-server"
+  vpc_id         = module.vpc.vpc_id
+  subnet_ids     = module.vpc.public_subnets
+  front_alb_cidr = var.front_alb_cidr
+  tags = merge(
+    var.additional_tags,
+    {
+      group = var.group
+      env   = var.environment
+    }
+  )
+
+  app_name             = "${var.group}-${var.app}-${var.environment}"
+  app_ecs_cluster_name = "${var.group}-${var.app}-ecs"
+  app_ecr_repo_name    = "${var.group}/${var.app}"
+  app_environment = {
+    PORT = var.app_container_port
+    ENV  = var.environment
+  }
+  app_container_port          = var.app_container_port
+  app_container_cpu           = var.app_container_cpu
+  app_container_memory        = var.app_container_memory
+  app_container_desired_count = var.app_container_desired_count
+
+  firelens_repo_name = "${var.group}/firelens"
+  firelens_tag       = "1.0"
 }

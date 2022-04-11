@@ -24,7 +24,6 @@ type ErrorHandlerFunc func(*api.ResponseWriter, *api.Request, error)
 
 type Server struct {
 	*http.Server
-	targetHandler   TargetHandlerFunc
 	middlewares     []MiddlewareFunc
 	errorHandler    ErrorHandlerFunc
 	maxIdleConns    int
@@ -34,7 +33,7 @@ type Server struct {
 	log             *logger.Logger
 }
 
-func New(address string, options ...serverOption) *Server {
+func New(address string, targetHandler TargetHandlerFunc, options ...serverOption) *Server {
 	// create server
 	srv := &Server{
 		middlewares:     make([]MiddlewareFunc, 0),
@@ -53,7 +52,7 @@ func New(address string, options ...serverOption) *Server {
 
 	// setup handler
 	handler := func(rw *api.ResponseWriter, req *api.Request) {
-		target, err := url.Parse(srv.targetHandler(req))
+		target, err := url.Parse(targetHandler(req))
 		if err != nil || target.String() == "" {
 			respErr := fmt.Errorf("Failed to parse target url")
 			srv.log.Error().Err(err).Msg(respErr.Error())
@@ -113,7 +112,12 @@ func (srv *Server) newSingleHostReverseProxy(target *url.URL) *httputil.ReverseP
 		ExpectContinueTimeout: 1 * time.Second,
 	}
 	proxy.ErrorHandler = func(rw http.ResponseWriter, req *http.Request, err error) {
-		srv.errorHandler(api.NewResponseWriter(rw), api.NewRequest(req), err)
+		switch writer := rw.(type) {
+		case *api.ResponseWriter:
+			srv.errorHandler(writer, api.NewRequest(req), err)
+		default:
+			srv.errorHandler(api.NewResponseWriter(rw), api.NewRequest(req), err)
+		}
 	}
 
 	// store proxy cache

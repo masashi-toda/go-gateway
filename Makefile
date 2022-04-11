@@ -1,18 +1,13 @@
 # Makefile for go-gateway
-
 .DEFAULT_GOAL := help
-
-# Load env file
-ENV ?= local
-env ?= .env.$(ENV)
-include $(env)
-export $(shell sed 's/=.*//' $(env))
 
 # -----------------------------------------------------------------
 #    ENV VARIABLE
 # -----------------------------------------------------------------
+GROUP      ?= learning
+APP        ?= go-gateway
 VERSION    := $(shell git describe --tags --abbrev=0 2> /dev/null || echo 1.0.0-alpha)
-REVISION   := $(shell git rev-parse --short HEAD 2> /dev/null || echo 0)
+REVISION   := $(CODEBUILD_RESOLVED_SOURCE_VERSION)# $(shell git rev-parse --short HEAD 2> /dev/null || echo 0)
 
 DESTDIR    := ./bin
 CMDDIR     := ./cmd
@@ -27,21 +22,26 @@ BUILD_OPTS := -v $(LDFLAGS)
 GOLANGCI_LINT_VERSION  := 1.45.0
 
 # ECR settings
-GROUP            := go-gateway
-APP_NAME         := api-server
-ENVIRONMENT      := dev
-ECS_CLUSTER_NAME := $(GROUP)-ecr
-ECR_NAME         := $(GROUP)/$(APP_NAME)
-APP_VERSION      := 1.0.0
+AWS_ACCOUNT_ID ?=# default empty
+AWS_PROFILE    ?= go-gateway
+AWS_REGION     ?= ap-northeast-1
+ECR_REPO_NAME  ?= $(GROUP)/$(APP)
 
-# Terraform settings
-TFM_VARS = -var 'profile=$(AWS_PROFILE)' \
-           -var 'region=$(AWS_REGION)' \
-           -var 'group=$(GROUP)' \
-           -var 'app=$(APP_NAME)' \
-           -var 'environment=$(ENVIRONMENT)' \
-           -var 'app_ecs_cluster_name=$(ECS_CLUSTER_NAME)' \
-           -var 'app_ecr_name=$(ECR_NAME)'
+ifdef AWS_ACCOUNT_ID
+AWS_PROFILE =# set empty
+else
+AWS_ACCOUNT_ID = $(shell aws sts get-caller-identity --profile $(AWS_PROFILE) | jq -r '.Account')
+endif
+
+DOCKER_REPO   := $(AWS_ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com
+CMD_REPOLOGIN := "aws ecr get-login-password"
+ifdef AWS_PROFILE
+CMD_REPOLOGIN += " --profile $(AWS_PROFILE)"
+endif
+ifdef AWS_REGION
+CMD_REPOLOGIN += " --region $(AWS_REGION)"
+endif
+CMD_REPOLOGIN += " | docker login --username AWS --password-stdin $(DOCKER_REPO)/$(ECR_REPO_NAME)"
 
 # -----------------------------------------------------------------
 #    Main targets
@@ -49,11 +49,15 @@ TFM_VARS = -var 'profile=$(AWS_PROFILE)' \
 
 .PHONY: env
 env: ## Print useful environment variables to stdout
-	@echo PREFIX = $(PREFIX)
-	@echo VERSION = $(VERSION)
-	@echo REVISION = $(REVISION)
-	@echo ECS_CLUSTER_NAME = $(ECS_CLUSTER_NAME)
-	@echo ECR_NAME = $(ECR_NAME)
+	@echo GROUP            = $(GROUP)
+	@echo APP              = $(APP)
+	@echo VERSION          = $(VERSION)
+	@echo REVISION         = $(REVISION)
+	@echo AWS_ACCOUNT_ID   = $(AWS_ACCOUNT_ID)
+	@echo AWS_PROFILE      = $(AWS_PROFILE)
+	@echo AWS_REGION       = $(AWS_REGION)
+	@echo ECR_REPO_NAME    = $(ECR_REPO_NAME)
+	@echo DOCKER_REPO      = $(DOCKER_REPO)
 
 .PHONY: build ## Build golang binary files
 build: $(SOURCES)
@@ -95,56 +99,42 @@ mod-tidy: ## Remove unnecessary go module packages
 	@go mod tidy
 	@go mod verify
 
+.PHONY: run-local-server
+run-local-server: ## Run local server
+	@go run cmd/adapter/main.go
+
 .PHONY: help
 help: env
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' Makefile | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
 
 # -----------------------------------------------------------------
-#    Terraform targets
-# -----------------------------------------------------------------
-
-.PHONY: terraform-init
-terraform-init: ## Init terraform
-	@cd terraform && terraform init $(TFM_VARS) && cd ..
-
-.PHONY: terraform-plan
-terraform-plan: ## Plan terraform
-	@cd terraform && terraform plan $(TFM_VARS) && cd ..
-
-.PHONY: terraform-apply
-terraform-apply: ## Apply terraform
-	@cd terraform && terraform apply $(TFM_VARS) && cd ..
-
-.PHONY: terraform-destroy
-terraform-destroy: ## Destroy terraform
-	@cd terraform && terraform destroy $(TFM_VARS) && cd ..
-
-# -----------------------------------------------------------------
 #    AWS ECR targets
 # -----------------------------------------------------------------
-ifneq ($(shell which aws),)
-ACCOUNT_ID    = $(shell aws sts get-caller-identity --profile $(AWS_PROFILE) | jq -r '.Account')
-DOCKER_REPO   = $(ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com
-CMD_REPOLOGIN := "aws ecr get-login-password --profile $(AWS_PROFILE) --region $(AWS_REGION)"
-CMD_REPOLOGIN += " | docker login --username AWS --password-stdin $(ACCOUNT_ID).dkr.ecr.ap-northeast-1.amazonaws.com/$(APP_NAME)"
-endif
 
 .PHONY: ecr-push-api-server
-ecr-push-api-server: build-nc publish ## Push ecr repository (api-server image)
+ecr-push-api-server: ecr-login docker-build docker-push ## Push ecr repository (api-server image)
 
-build-nc: ## Build the container without caching
-	docker build --no-cache -t $(ECR_NAME) .
-
-publish: repo-login publish-latest
-
-repo-login: ## Auto login to AWS-ECR unsing aws-cli
+ecr-login: ## Auto login to AWS-ECR unsing aws-cli
 	@echo $(CMD_REPOLOGIN)
 	@eval $(CMD_REPOLOGIN)
 
-publish-latest: ## Publish the `latest` taged container to ECR
+docker-build: ## Build the container without caching
+	docker build --no-cache -t $(ECR_REPO_NAME) .
+
+docker-push: docker-push-latest docker-push-revision
+
+docker-push-latest: ## Publish the `latest` taged container to ECR
 	@echo 'publish latest to $(DOCKER_REPO)'
-	@docker tag $(ECR_NAME) $(DOCKER_REPO)/$(ECR_NAME):latest
-	@docker push $(DOCKER_REPO)/$(ECR_NAME):latest
+	@docker tag $(ECR_REPO_NAME) $(DOCKER_REPO)/$(ECR_REPO_NAME):latest
+	@docker push $(DOCKER_REPO)/$(ECR_REPO_NAME):latest
+
+docker-push-revision: ## Publish the `revision` taged container to ECR
+	@echo 'publish latest to $(DOCKER_REPO)'
+	@docker tag $(ECR_REPO_NAME) $(DOCKER_REPO)/$(ECR_REPO_NAME):$(REVISION)
+	@docker push $(DOCKER_REPO)/$(ECR_REPO_NAME):$(REVISION)
+
+show-docker-image-uri: ## Show docker image uri
+	@echo '{"ImageURI":"$(DOCKER_REPO)/$(ECR_REPO_NAME):$(REVISION)"}'
 
 # -----------------------------------------------------------------
 #    Setup targets

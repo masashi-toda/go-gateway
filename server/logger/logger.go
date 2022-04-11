@@ -29,9 +29,7 @@ func SetupDefaultLogger(out io.Writer) {
 }
 
 type Logger struct {
-	internal      zerolog.Logger
-	withHostName  bool
-	withTimestamp bool
+	internal zerolog.Logger
 }
 
 func (l *Logger) Debug() *zerolog.Event {

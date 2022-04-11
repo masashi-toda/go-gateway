@@ -1,0 +1,26 @@
+version: 0.2
+
+env:
+  variables:
+    DOCKER_BUILDKIT: "1"
+phases:
+  install:
+    runtime-versions:
+      docker: 18
+  pre_build:
+    commands:
+      - make env
+      - make ecr-login
+  build:
+    commands:
+      - make docker-build
+      - make docker-push
+      - make show-docker-image-uri > imageDetail.json
+      - $(aws ecs describe-task-definition --task-definition $ECS_TASK_DEFINITION_ARN --query taskDefinition | jq '.containerDefinitions[0].image="<IMAGE1_NAME>"' > taskdef.json)
+      - sed -i -e "s#<ECS_CONTAINER_NAME>#${ECS_CONTAINER_NAME}#" appspec.yml
+      - sed -i -e "s#<ECS_CONTAINER_PORT>#${ECS_CONTAINER_PORT}#" appspec.yml
+artifacts:
+  files:
+    - taskdef.json
+    - appspec.yml
+    - imageDetail.json

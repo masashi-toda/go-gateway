@@ -21,6 +21,7 @@ func Recovery(log *logger.Logger) server.MiddlewareFunc {
 					rw.InternalServerError(err)
 				}
 			}()
+			// call next handler function
 			next(rw, req)
 		}
 	}

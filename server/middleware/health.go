@@ -11,6 +11,7 @@ func Health(path string, body interface{}) server.MiddlewareFunc {
 			if path == req.URL.Path {
 				rw.OK(body)
 			} else {
+				// call next handler function
 				next(rw, req)
 			}
 		}

@@ -26,9 +26,6 @@ func main() {
 		targetHandler = func(req *api.Request) string {
 			return "http://localhost:18080"
 		}
-		errorHandler = func(rw *api.ResponseWriter, _ *api.Request, err error) {
-			rw.InternalServerError(err)
-		}
 		accessLogFilter = func(req *api.Request) bool {
 			return strings.HasPrefix(req.URL.Path, "/search")
 		}
@@ -43,13 +40,11 @@ func main() {
 			middleware.AccessLog(log, []string{"/favicon.ico"}, accessLogFilter),
 			middleware.Health("/health", healthCheckResp),
 		}
-		srv = server.New(address,
-			server.WithTargetHandler(targetHandler),
+		srv = server.New(address, targetHandler,
 			server.WithMiddleware(middlewares...),
-			server.WithErrorHandler(errorHandler),
 			server.WithMaxIdleConns(100),
 			server.WithIdleConnTimeout(60*time.Second),
-			server.WithTcpConnTimeout(30*time.Second),
+			server.WithTCPConnTimeout(30*time.Second),
 			server.WithLogger(log),
 		)
 	)

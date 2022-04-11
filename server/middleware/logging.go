@@ -28,7 +28,7 @@ func AccessLog(log *logger.Logger, skipPath []string, filter IsLoggingReqBodyFun
 		logEvent = func(status int) *zerolog.Event {
 			switch {
 			case status >= http.StatusBadRequest && status < http.StatusInternalServerError:
-				return log.Error()
+				return log.Warn()
 			case status >= http.StatusInternalServerError:
 				return log.Error()
 			default:
@@ -45,7 +45,6 @@ func AccessLog(log *logger.Logger, skipPath []string, filter IsLoggingReqBodyFun
 				)
 				if filter(req) && req.ContentLength > 0 && req.Body != nil {
 					if body, err = io.ReadAll(req.Body); err == nil {
-						defer req.Body.Close()
 						req.Body = io.NopCloser(bytes.NewBuffer(body))
 					}
 				}
@@ -55,18 +54,23 @@ func AccessLog(log *logger.Logger, skipPath []string, filter IsLoggingReqBodyFun
 						Str("method", req.Method).
 						Str("path", req.URL.Path).
 						Str("query", req.URL.RawQuery).
+						Interface("header", req.Header).
 						Str("protocol", req.Proto).
 						Str("client_ip", req.ClientIP()).
 						Str("useragent", req.UserAgent()).
 						Str("referer", req.Referer()).
 						Dur("latency", system.CurrentTime().Sub(begin)).
-						Str("host", req.Host)
+						Str("target", req.Host).
+						Int64("bytes_in", req.ContentLength).
+						Int64("bytes_out", rw.Size())
 					if len(body) > 0 {
 						evt = evt.RawJSON("body", body)
 					}
+					// write access log
 					evt.Send()
 				}(system.CurrentTime())
 			}
+			// call next handler function
 			next(rw, req)
 		}
 	}

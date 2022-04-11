@@ -67,10 +67,10 @@ func TestNew(t *testing.T) {
 		proxyServerAddress = "http://" + listener.Addr().String()
 		listener.Close()
 		srv := New(listener.Addr().String(),
-			WithTargetHandler(func(req *api.Request) string {
+			func(req *api.Request) string {
 				// return api server address
 				return apiServerAddress
-			}),
+			},
 		)
 		defer srv.Shutdown(context.Background())
 
@@ -108,13 +108,13 @@ func TestDefaultErrorHandler(t *testing.T) {
 		proxyServerAddress = "http://" + listener.Addr().String()
 		listener.Close()
 		srv := New(listener.Addr().String(),
-			WithTargetHandler(func(req *api.Request) string {
+			func(req *api.Request) string {
 				// return invalid address
 				return "http://go-gateway.xxxxxx..invalid.com"
-			}),
+			},
 			WithMaxIdleConns(1),
 			WithIdleConnTimeout(1*time.Second),
-			WithTcpConnTimeout(1*time.Second),
+			WithTCPConnTimeout(1*time.Second),
 			WithLogger(logger.New(bytes.NewBuffer(nil))),
 		)
 		defer srv.Shutdown(context.Background())
@@ -150,10 +150,10 @@ func TestCustomErrorHandler(t *testing.T) {
 		proxyServerAddress = "http://" + listener.Addr().String()
 		listener.Close()
 		srv := New(listener.Addr().String(),
-			WithTargetHandler(func(req *api.Request) string {
+			func(req *api.Request) string {
 				// return invalid address
 				return "http://go-gateway.xxxxxx..invalid.com"
-			}),
+			},
 			WithErrorHandler(func(rw *api.ResponseWriter, _ *api.Request, err error) {
 				rw.BadGateway(fmt.Errorf("custom error [%s]", err.Error()))
 			}),
@@ -191,10 +191,10 @@ func TestTargetURLParseError(t *testing.T) {
 		proxyServerAddress = "http://" + listener.Addr().String()
 		listener.Close()
 		srv := New(listener.Addr().String(),
-			WithTargetHandler(func(req *api.Request) string {
+			func(req *api.Request) string {
 				// return empty url for recovery middleware
 				return ""
-			}),
+			},
 		)
 		defer srv.Shutdown(context.Background())
 
@@ -229,13 +229,13 @@ func TestPanicRecoveryWithMiddleware(t *testing.T) {
 		proxyServerAddress = "http://" + listener.Addr().String()
 		listener.Close()
 		srv := New(listener.Addr().String(),
+			func(req *api.Request) string {
+				// Invoke a panic function for recovery middleware
+				panic("unexpected error !!!")
+			},
 			WithMiddleware(
 				middleware.Recovery(logger.New(bytes.NewBuffer(nil))),
 			),
-			WithTargetHandler(func(req *api.Request) string {
-				// Invoke a panic function for recovery middleware
-				panic("unexpected error !!!")
-			}),
 		)
 		defer srv.Shutdown(context.Background())
 
@@ -257,10 +257,4 @@ func TestPanicRecoveryWithMiddleware(t *testing.T) {
 		assert.Equal(t, http.StatusInternalServerError, resp.StatusCode())
 		assert.JSONEq(t, `{"message": "unexpected error !!!"}`, string(resp.Body()))
 	}
-}
-
-func newProxyAddress() string {
-	listener, _ := net.Listen("tcp", "localhost:0")
-	defer listener.Close()
-	return "http://" + listener.Addr().String()
 }

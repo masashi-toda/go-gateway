@@ -8,12 +8,6 @@ import (
 
 type serverOption func(*Server)
 
-func WithTargetHandler(targetHandler TargetHandlerFunc) serverOption {
-	return func(srv *Server) {
-		srv.targetHandler = targetHandler
-	}
-}
-
 func WithMiddleware(middlewares ...MiddlewareFunc) serverOption {
 	return func(srv *Server) {
 		srv.middlewares = middlewares
@@ -38,7 +32,7 @@ func WithIdleConnTimeout(idleConnTimeout time.Duration) serverOption {
 	}
 }
 
-func WithTcpConnTimeout(tcpConnTimeout time.Duration) serverOption {
+func WithTCPConnTimeout(tcpConnTimeout time.Duration) serverOption {
 	return func(srv *Server) {
 		srv.tcpConnTimeout = tcpConnTimeout
 	}

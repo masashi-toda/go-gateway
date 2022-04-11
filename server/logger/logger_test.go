@@ -60,7 +60,7 @@ func TestLogger(t *testing.T) {
 	}
 
 	// panic error test (with default logger)
-	system.RunTest(t, fmt.Sprintf("panic message"), func(t *testing.T) {
+	system.RunTest(t, "panic message", func(t *testing.T) {
 		var (
 			buf      = bytes.NewBuffer(nil)
 			expected = fmt.Sprintf(`{

@@ -1,5 +1,5 @@
-resource "aws_lb" "front" {
-  name               = "${var.app}-${var.environment}-alb"
+resource "aws_lb" "app" {
+  name               = "${var.app_name}-alb"
   load_balancer_type = "application"
   subnets            = var.subnet_ids
 
@@ -7,72 +7,29 @@ resource "aws_lb" "front" {
     aws_security_group.front_alb.id
   ]
 
-  tags = {
-    Owner = var.owner
-  }
+  tags = var.tags
 }
 
-resource "aws_security_group" "front_alb" {
-  vpc_id = var.vpc_id
-
-  ingress {
-    from_port   = 80
-    to_port     = 80
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  tags = {
-    Owner = var.owner
-  }
-}
-
-resource "aws_security_group" "api_server_web_sg" {
-  vpc_id = var.vpc_id
-
-  ingress {
-    from_port = 0
-    to_port   = 65535
-    protocol  = "tcp"
-
-    security_groups = [
-      aws_security_group.front_alb.id
-    ]
-  }
-
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  tags = {
-    Owner = var.owner
-  }
-}
-
-resource "aws_lb_listener" "http" {
-  load_balancer_arn = aws_lb.front.arn
+resource "aws_lb_listener" "app" {
+  load_balancer_arn = aws_lb.app.arn
   port              = "80"
   protocol          = "HTTP"
 
   default_action {
-    target_group_arn = aws_lb_target_group.http.id
+    target_group_arn = aws_lb_target_group.blue.id
     type             = "forward"
+  }
+
+  lifecycle {
+    ignore_changes = [
+      default_action
+    ]
   }
 }
 
-resource "aws_lb_target_group" "http" {
-  name                 = "${var.app}-${var.environment}-tg"
-  port                 = 8080
+resource "aws_lb_target_group" "blue" {
+  name                 = "${var.app_name}-blue"
+  port                 = var.app_container_port
   protocol             = "HTTP"
   vpc_id               = var.vpc_id
   target_type          = "ip"
@@ -86,7 +43,24 @@ resource "aws_lb_target_group" "http" {
     timeout             = 10
   }
 
-  tags = {
-    Owner = var.owner
+  tags = var.tags
+}
+
+resource "aws_lb_target_group" "green" {
+  name                 = "${var.app_name}-green"
+  port                 = var.app_container_port
+  protocol             = "HTTP"
+  vpc_id               = var.vpc_id
+  target_type          = "ip"
+  deregistration_delay = 60
+
+  health_check {
+    healthy_threshold   = 5
+    unhealthy_threshold = 5
+    path                = "/health"
+    interval            = 30
+    timeout             = 10
   }
+
+  tags = var.tags
 }

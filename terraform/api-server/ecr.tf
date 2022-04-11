@@ -1,10 +1,11 @@
 resource "aws_ecr_repository" "app" {
-  name                 = var.app_ecr_name
+  name                 = var.app_ecr_repo_name
   image_tag_mutability = "MUTABLE"
 
   lifecycle {
     create_before_destroy = true
   }
+
   image_scanning_configuration {
     scan_on_push = true
   }
@@ -54,6 +55,7 @@ resource "aws_ecr_repository_policy" "app" {
 resource "aws_ecr_repository" "firelens" {
   name                 = var.firelens_repo_name
   image_tag_mutability = "MUTABLE"
+
   image_scanning_configuration {
     scan_on_push = true
   }
