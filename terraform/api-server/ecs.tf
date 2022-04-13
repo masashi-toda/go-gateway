@@ -100,7 +100,7 @@ resource "aws_ecs_service" "app" {
   ]
 
   network_configuration {
-    subnets = var.subnet_ids
+    subnets = var.private_subnets
     security_groups = [
       aws_security_group.front_alb.id,
       aws_security_group.ecs.id

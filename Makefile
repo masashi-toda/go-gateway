@@ -6,8 +6,8 @@
 # -----------------------------------------------------------------
 GROUP      ?= learning
 APP        ?= go-gateway
-VERSION    := $(shell git describe --tags --abbrev=0 2> /dev/null || echo 1.0.0-alpha)
-REVISION   := $(CODEBUILD_RESOLVED_SOURCE_VERSION)# $(shell git rev-parse --short HEAD 2> /dev/null || echo 0)
+VERSION    ?= $(shell git describe --tags --abbrev=0 2> /dev/null || echo 1.0.0-alpha)
+REVISION   ?= $(CODEBUILD_RESOLVED_SOURCE_VERSION)# $(shell git rev-parse --short HEAD 2> /dev/null || echo 0)
 
 DESTDIR    := ./bin
 CMDDIR     := ./cmd

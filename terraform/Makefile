@@ -17,8 +17,8 @@ AWS_ACCOUNT_ID ?=# default empty
 AWS_PROFILE    ?= go-gateway
 AWS_REGION     ?= ap-northeast-1
 
-TF_DYNAMODB_TABLE ?= $(GROUP)-$(APP)-$(ENV)-terraform-state-lock
-TF_S3_BUCKET      ?= terraform-$(GROUP)-$(APP)-$(ENV)
+TF_DYNAMODB_TABLE ?= $(GROUP)-$(APP)-terraform-state-lock
+TF_S3_BUCKET      ?= terraform-$(GROUP)-$(APP)
 TF_KEY            ?= terraform.tfstate/$(GROUP)-$(APP)-$(ENV)
 
 # Terraform settings
@@ -27,7 +27,8 @@ TFM_BK_VARS   = -var 'aws_profile=$(AWS_PROFILE)' \
                 -var 's3_bucket=$(TF_S3_BUCKET)' \
                 -var 'dynamodb_table=$(TF_DYNAMODB_TABLE)'
 
-TFM_BK_CONFIG = -backend-config='region=$(AWS_REGION)' \
+TFM_BK_CONFIG = -backend=true \
+                -backend-config='region=$(AWS_REGION)' \
                 -backend-config='bucket=$(TF_S3_BUCKET)' \
                 -backend-config='key=$(TF_KEY)' \
                 -backend-config='dynamodb_table=$(TF_DYNAMODB_TABLE)' \
@@ -55,16 +56,12 @@ terraform-setup: ## Setup terraform backend configuration
 	@cd backend && terraform init $(TFM_BK_VARS) && terraform apply $(TFM_BK_VARS) && cd ..
 
 .PHONY: terraform-init
-terraform-init: ## Init terraform
-	@terraform init $(TFM_VARS) $(TFM_BK_CONFIG)
+terraform-init: ## Init terraform (with reconfigure)
+	@terraform init $(TFM_VARS) $(TFM_BK_CONFIG) -reconfigure
 
 .PHONY: terraform-init-upgrade
 terraform-init-upgrade: ## Init terraform (with upgrade)
 	@terraform init $(TFM_VARS) $(TFM_BK_CONFIG) -upgrade
-
-.PHONY: terraform-init-reconfigure
-terraform-init-reconfigure: ## Init terraform (with reconfigure)
-	@terraform init $(TFM_VARS) $(TFM_BK_CONFIG) -reconfigure
 
 .PHONY: terraform-plan
 terraform-plan: ## Plan terraform

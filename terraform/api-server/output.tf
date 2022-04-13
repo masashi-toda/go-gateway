@@ -11,5 +11,9 @@ output "api_server_ecr_repository_url" {
 }
 
 output "api_server_alb_dns_name" {
-  value = aws_lb.app.dns_name
+  value = aws_lb.alb.dns_name
+}
+
+output "api_server_nlb_dns_name" {
+  value = aws_lb.nlb.dns_name
 }

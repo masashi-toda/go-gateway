@@ -28,8 +28,9 @@ module "vpc" {
   name = var.vpc_name
   cidr = var.vpc_cidr
 
-  azs            = data.aws_availability_zones.available.names
-  public_subnets = var.aws_subnet_public
+  azs             = data.aws_availability_zones.available.names
+  public_subnets  = var.public_subnets
+  private_subnets = var.private_subnets
 
   enable_dns_hostnames = true
   enable_dns_support   = true
@@ -49,10 +50,11 @@ module "vpc" {
 
 # for test application, if necessary
 module "ecr_api_server" {
-  source         = "./api-server"
-  vpc_id         = module.vpc.vpc_id
-  subnet_ids     = module.vpc.public_subnets
-  front_alb_cidr = var.front_alb_cidr
+  source          = "./api-server"
+  vpc_id          = module.vpc.vpc_id
+  public_subnets  = module.vpc.public_subnets
+  private_subnets = module.vpc.private_subnets
+  front_alb_cidr  = var.front_alb_cidr
   tags = merge(
     var.additional_tags,
     {

@@ -9,6 +9,8 @@ phases:
       docker: 18
   pre_build:
     commands:
+      - echo $CODEBUILD_RESOLVED_SOURCE_VERSION
+      - echo $CODEBUILD_SOURCE_VERSION
       - make env
       - make ecr-login
   build:

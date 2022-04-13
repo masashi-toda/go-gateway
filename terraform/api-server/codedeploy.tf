@@ -11,7 +11,7 @@ resource "aws_codedeploy_deployment_group" "app" {
 
   auto_rollback_configuration {
     enabled = true
-    events  = [
+    events = [
       "DEPLOYMENT_FAILURE",
       "DEPLOYMENT_STOP_ON_ALARM"
     ]
@@ -19,7 +19,7 @@ resource "aws_codedeploy_deployment_group" "app" {
 
   blue_green_deployment_config {
     deployment_ready_option {
-      action_on_timeout    = "CONTINUE_DEPLOYMENT"
+      action_on_timeout = "CONTINUE_DEPLOYMENT"
     }
     terminate_blue_instances_on_deployment_success {
       action                           = "TERMINATE"
@@ -37,22 +37,22 @@ resource "aws_codedeploy_deployment_group" "app" {
     service_name = aws_ecs_service.app.name
   }
 
-#  alarm_configuration {
-#    alarms                    = [aws_cloudwatch_metric_alarm.ecs-404s.alarm_name]
-#    enabled                   = true
-#    ignore_poll_alarm_failure = false
-#  }
+  #  alarm_configuration {
+  #    alarms                    = [aws_cloudwatch_metric_alarm.ecs-404s.alarm_name]
+  #    enabled                   = true
+  #    ignore_poll_alarm_failure = false
+  #  }
 
   load_balancer_info {
     target_group_pair_info {
       prod_traffic_route {
         listener_arns = [
-          aws_lb_listener.app.arn
+          aws_lb_listener.alb.arn
         ]
       }
-#      test_traffic_route {
-#        listener_arns = [aws_lb_listener.test.arn]
-#      }
+      #      test_traffic_route {
+      #        listener_arns = [aws_lb_listener.test.arn]
+      #      }
       target_group {
         name = aws_lb_target_group.blue.name
       }

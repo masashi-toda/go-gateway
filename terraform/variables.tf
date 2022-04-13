@@ -37,9 +37,15 @@ variable "vpc_cidr" {
 }
 
 # The public subnets, minimum of 2, that are a part of the VPC(s)
-variable "aws_subnet_public" {
+variable "public_subnets" {
   type    = list(string)
   default = ["10.0.0.0/24", "10.0.1.0/24"]
+}
+
+# The private subnets, minimum of 2, that are a part of the VPC(s)
+variable "private_subnets" {
+  type    = list(string)
+  default = ["10.0.100.0/24", "10.0.101.0/24"]
 }
 
 variable "front_alb_cidr" {
