@@ -1,11 +1,11 @@
 resource "aws_lb" "alb" {
-  name               = "${var.app_name}-alb"
+  name               = "${var.name_prefix}-alb"
   load_balancer_type = "application"
-  subnets            = var.private_subnets
-  internal           = true
+  subnets            = var.subnets
+  internal           = var.internal
 
   security_groups = [
-    aws_security_group.front_alb.id
+    aws_security_group.alb.id
   ]
 
   tags = var.tags
@@ -16,8 +16,13 @@ resource "aws_lb_listener" "alb" {
   port              = "80"
   protocol          = "HTTP"
 
+  depends_on = [
+    aws_lb_target_group.blue,
+    aws_lb_target_group.green
+  ]
+
   default_action {
-    target_group_arn = aws_lb_target_group.blue.id
+    target_group_arn = aws_lb_target_group.blue.arn
     type             = "forward"
   }
 
@@ -29,8 +34,8 @@ resource "aws_lb_listener" "alb" {
 }
 
 resource "aws_lb_target_group" "blue" {
-  name                 = "${var.app_name}-blue"
-  port                 = var.app_container_port
+  name                 = "${var.name_prefix}-blue"
+  port                 = var.target_port
   protocol             = "HTTP"
   vpc_id               = var.vpc_id
   target_type          = "ip"
@@ -39,7 +44,7 @@ resource "aws_lb_target_group" "blue" {
   health_check {
     healthy_threshold   = 5
     unhealthy_threshold = 5
-    path                = "/health"
+    path                = var.health_check_path
     interval            = 30
     timeout             = 10
   }
@@ -48,8 +53,8 @@ resource "aws_lb_target_group" "blue" {
 }
 
 resource "aws_lb_target_group" "green" {
-  name                 = "${var.app_name}-green"
-  port                 = var.app_container_port
+  name                 = "${var.name_prefix}-green"
+  port                 = var.target_port
   protocol             = "HTTP"
   vpc_id               = var.vpc_id
   target_type          = "ip"
@@ -58,7 +63,7 @@ resource "aws_lb_target_group" "green" {
   health_check {
     healthy_threshold   = 5
     unhealthy_threshold = 5
-    path                = "/health"
+    path                = var.health_check_path
     interval            = 30
     timeout             = 10
   }

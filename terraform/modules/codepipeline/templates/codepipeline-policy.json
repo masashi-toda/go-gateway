@@ -1,35 +1,35 @@
 {
-  "Version":"2012-10-17",
-  "Statement":[
+  "Version": "2012-10-17",
+  "Statement": [
     {
-      "Action":[
+      "Action": [
         "iam:PassRole"
       ],
       "Resource": [
         "*"
       ],
-      "Effect":"Allow",
-      "Condition":{
-        "StringEqualsIfExists":{
-          "iam:PassedToService":[
+      "Effect": "Allow",
+      "Condition": {
+        "StringEqualsIfExists": {
+          "iam:PassedToService": [
             "ecs-tasks.amazonaws.com"
           ]
         }
       }
     },
     {
-      "Action":[
+      "Action": [
         "codecommit:CancelUploadArchive",
         "codecommit:GetBranch",
         "codecommit:GetCommit",
         "codecommit:GetUploadArchiveStatus",
         "codecommit:UploadArchive"
       ],
-      "Resource":"*",
-      "Effect":"Allow"
+      "Resource": "*",
+      "Effect": "Allow"
     },
     {
-      "Action":[
+      "Action": [
         "codedeploy:CreateDeployment",
         "codedeploy:GetApplication",
         "codedeploy:GetApplicationRevision",
@@ -37,11 +37,11 @@
         "codedeploy:GetDeploymentConfig",
         "codedeploy:RegisterApplicationRevision"
       ],
-      "Resource":"*",
-      "Effect":"Allow"
+      "Resource": "*",
+      "Effect": "Allow"
     },
     {
-      "Action":[
+      "Action": [
         "ec2:*",
         "elasticloadbalancing:*",
         "autoscaling:*",
@@ -50,31 +50,31 @@
         "sns:*",
         "ecs:*"
       ],
-      "Resource":"*",
-      "Effect":"Allow"
+      "Resource": "*",
+      "Effect": "Allow"
     },
     {
-      "Action":[
+      "Action": [
         "lambda:InvokeFunction",
         "lambda:ListFunctions"
       ],
-      "Resource":"*",
-      "Effect":"Allow"
+      "Resource": "*",
+      "Effect": "Allow"
     },
     {
-      "Action":[
+      "Action": [
         "codebuild:BatchGetBuilds",
         "codebuild:StartBuild"
       ],
-      "Resource":"*",
-      "Effect":"Allow"
+      "Resource": "*",
+      "Effect": "Allow"
     },
     {
-      "Effect":"Allow",
-      "Action":[
+      "Effect": "Allow",
+      "Action": [
         "ecr:DescribeImages"
       ],
-      "Resource":"*"
+      "Resource": "*"
     },
     {
       "Effect": "Allow",

@@ -1,5 +1,5 @@
 resource "aws_ecs_cluster" "app" {
-  name = "${var.app_name}-ecs"
+  name = "${var.container_name}-ecs"
 
   setting {
     name  = "containerInsights"
@@ -10,29 +10,29 @@ resource "aws_ecs_cluster" "app" {
 }
 
 resource "aws_ecs_task_definition" "app" {
-  family                   = var.app_name
+  family                   = var.container_name
   requires_compatibilities = ["FARGATE"]
   network_mode             = "awsvpc"
-  cpu                      = var.app_container_cpu
-  memory                   = var.app_container_memory
+  cpu                      = var.container_cpu
+  memory                   = var.container_memory
   task_role_arn            = aws_iam_role.ecs_task_execution.arn
   execution_role_arn       = aws_iam_role.ecs_task_execution.arn
 
   container_definitions = jsonencode([
     {
-      name      = "${var.app_name}",
-      image     = "${aws_ecr_repository.app.repository_url}",
+      name      = "${var.container_name}",
+      image     = "${var.repository_url}",
       essential = true,
       portMappings = [
         {
-          containerPort = var.app_container_port
+          containerPort = var.container_port
         }
       ],
       environment = [
-        for key in keys(var.app_environment) :
+        for key in keys(var.environments) :
         {
           name  = key,
-          value = lookup(var.app_environment, key)
+          value = lookup(var.environments, key)
         }
       ],
       logConfiguration = {
@@ -41,7 +41,7 @@ resource "aws_ecs_task_definition" "app" {
     },
     {
       name              = "log_router",
-      image             = "${aws_ecr_repository.firelens.repository_url}:${var.firelens_tag}",
+      image             = "${var.firelens_repository_url}:${var.firelens_tag}",
       essential         = true,
       memoryReservation = 50,
       environment = [
@@ -67,7 +67,7 @@ resource "aws_ecs_task_definition" "app" {
         options = {
           awslogs-group         = "${aws_cloudwatch_log_group.firehose.name}",
           awslogs-region        = "${data.aws_region.current.name}",
-          awslogs-stream-prefix = "${var.app_name}-sidecar"
+          awslogs-stream-prefix = "${var.container_name}-sidecar"
         }
       },
       firelensConfiguration = {
@@ -88,30 +88,25 @@ resource "aws_ecs_task_definition" "app" {
 }
 
 resource "aws_ecs_service" "app" {
-  name            = "${var.app_name}-service"
+  name            = "${var.container_name}-service"
   cluster         = aws_ecs_cluster.app.id
   launch_type     = "FARGATE"
   task_definition = aws_ecs_task_definition.app.id
-  desired_count   = "1"
-
-  depends_on = [
-    aws_lb_target_group.blue,
-    aws_lb_target_group.green
-  ]
+  desired_count   = var.container_desired_count
 
   network_configuration {
-    subnets = var.private_subnets
+    subnets = var.subnets
     security_groups = [
-      aws_security_group.front_alb.id,
+      var.security_group_id,
       aws_security_group.ecs.id
     ]
     assign_public_ip = true
   }
 
   load_balancer {
-    target_group_arn = aws_lb_target_group.blue.arn
-    container_name   = var.app_name
-    container_port   = var.app_container_port
+    target_group_arn = var.lb_target_group_arn
+    container_name   = var.container_name
+    container_port   = var.container_port
   }
 
   deployment_controller {
@@ -126,3 +121,5 @@ resource "aws_ecs_service" "app" {
     ]
   }
 }
+
+data "aws_region" "current" {}

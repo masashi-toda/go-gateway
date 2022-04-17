@@ -1,5 +1,5 @@
 resource "aws_codebuild_project" "app" {
-  name                   = "${aws_ecs_cluster.app.name}-build"
+  name                   = "${var.name_prefix}-build"
   service_role           = aws_iam_role.codebuild.arn
   concurrent_build_limit = 1
   build_timeout          = "60"
@@ -29,22 +29,22 @@ resource "aws_codebuild_project" "app" {
     }
     environment_variable {
       name  = "ECR_REPO_NAME"
-      value = var.app_ecr_repo_name
+      value = var.repository_name
     }
     environment_variable {
       name  = "ECS_TASK_DEFINITION_ARN"
-      value = aws_ecs_task_definition.app.arn
+      value = var.task_definition_arn
     }
     environment_variable {
       name  = "ECS_CONTAINER_NAME"
-      value = var.app_name
+      value = var.container_name
     }
     environment_variable {
       name  = "ECS_CONTAINER_PORT"
-      value = var.app_container_port
+      value = var.container_port
     }
     dynamic "environment_variable" {
-      for_each = var.app_environment
+      for_each = var.environments
       content {
         name  = environment_variable.key
         value = environment_variable.value

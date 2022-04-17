@@ -1,57 +1,16 @@
-variable "aws_profile" {
-  default = "go-gateway"
-}
+variable "aws_profile" {}
 
-variable "aws_region" {
-  default = "ap-northeast-1"
-}
+variable "aws_region" {}
 
-# The application's group name
-variable "group" {
-  default = "go-gateway"
-}
+###################################
+## Global Variables
+###################################
 
-# The application's name
-variable "app" {
-  default = "api-server"
-}
+variable "group" {}
 
-# The environment that is being built
-variable "environment" {
-  default = "dev"
-}
+variable "app" {}
 
-# The vpc name
-variable "vpc_name" {
-  default = "go_gateway_vpc"
-}
-
-variable "aws_az" {
-  type = list(string)
-  default = ["ap-northeast-1a", "ap-northeast-1c"]
-}
-
-# The vpc cidr
-variable "vpc_cidr" {
-  default = "10.0.0.0/16"
-}
-
-# The public subnets, minimum of 2, that are a part of the VPC(s)
-variable "public_subnets" {
-  type    = list(string)
-  default = ["10.0.0.0/24", "10.0.1.0/24"]
-}
-
-# The private subnets, minimum of 2, that are a part of the VPC(s)
-variable "private_subnets" {
-  type    = list(string)
-  default = ["10.0.100.0/24", "10.0.101.0/24"]
-}
-
-variable "front_alb_cidr" {
-  type    = list(string)
-  default = ["0.0.0.0/0"]
-}
+variable "env" {}
 
 variable "additional_tags" {
   type    = map(string)
@@ -59,34 +18,66 @@ variable "additional_tags" {
 }
 
 ###################################
+## VPC Variables
+###################################
+
+variable "vpc_az_names" {
+  type = list(string)
+}
+
+variable "vpc_cidr" {}
+
+variable "vpc_public_subnets" {
+  type = list(string)
+}
+
+variable "vpc_private_subnets" {
+  type = list(string)
+}
+
+###################################
+## ALB Variables
+###################################
+
+variable "alb_ingress_cidr_blocks" {
+  type = list(string)
+}
+
+###################################
 ## AWS ECS Container Variables
 ###################################
 
-variable "app_container_port" {
-  default = 8080
+variable "container_port" {}
+
+variable "container_cpu" {
+  type = number
 }
 
-variable "app_container_cpu" {
-  type    = number
-  default = 256 # 0.25 vCPU
+variable "container_memory" {
+  type = number
 }
 
-variable "app_container_memory" {
-  type    = number
-  default = 512 # 0.5 GB
+variable "container_desired_count" {
+  type = number
 }
-
-variable "app_container_desired_count" {
-  type    = number
-  default = 1
-}
-
 
 ###################################
-## Application Variables
+## CodePipeline Variables
 ###################################
 
-variable "app_environment" {
-  type    = map(string)
-  default = {}
+variable "git_repository_name" {}
+
+###################################
+## Local Variables
+###################################
+
+locals {
+  base_name = "${var.group}-${var.app}-${var.env}"
+  tags = merge(
+    var.additional_tags,
+    {
+      group = var.group
+      env   = var.env
+    }
+  )
 }

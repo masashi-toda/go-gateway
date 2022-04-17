@@ -1,12 +1,12 @@
 resource "aws_codedeploy_app" "app" {
-  name             = "${var.app_name}-deploy"
+  name             = "${var.name_prefix}-deploy"
   compute_platform = "ECS"
 }
 
 resource "aws_codedeploy_deployment_group" "app" {
   app_name               = aws_codedeploy_app.app.name
   deployment_config_name = "CodeDeployDefault.ECSAllAtOnce"
-  deployment_group_name  = "${var.app_name}-bluegreen"
+  deployment_group_name  = "${var.name_prefix}-bluegreen"
   service_role_arn       = aws_iam_role.codedeploy.arn
 
   auto_rollback_configuration {
@@ -33,8 +33,8 @@ resource "aws_codedeploy_deployment_group" "app" {
   }
 
   ecs_service {
-    cluster_name = aws_ecs_cluster.app.name
-    service_name = aws_ecs_service.app.name
+    cluster_name = var.ecs_cluster_name
+    service_name = var.ecs_service_name
   }
 
   #  alarm_configuration {
@@ -47,17 +47,17 @@ resource "aws_codedeploy_deployment_group" "app" {
     target_group_pair_info {
       prod_traffic_route {
         listener_arns = [
-          aws_lb_listener.alb.arn
+          var.lb_listener_arn
         ]
       }
       #      test_traffic_route {
       #        listener_arns = [aws_lb_listener.test.arn]
       #      }
       target_group {
-        name = aws_lb_target_group.blue.name
+        name = var.lb_target_group_1
       }
       target_group {
-        name = aws_lb_target_group.green.name
+        name = var.lb_target_group_2
       }
     }
   }

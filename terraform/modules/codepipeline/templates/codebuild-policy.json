@@ -1,24 +1,24 @@
 {
-  "Version":"2012-10-17",
-  "Statement":[
+  "Version": "2012-10-17",
+  "Statement": [
     {
-      "Effect":"Allow",
-      "Resource":[
+      "Effect": "Allow",
+      "Resource": [
         "arn:aws:logs:*:${aws_account_id}:log-group:/aws/codebuild/*:*"
       ],
-      "Action":[
+      "Action": [
         "logs:CreateLogGroup",
         "logs:CreateLogStream",
         "logs:PutLogEvents"
       ]
     },
     {
-      "Effect":"Allow",
-      "Resource":[
+      "Effect": "Allow",
+      "Resource": [
         "arn:aws:s3:::${codepipeline-bucket}",
         "arn:aws:s3:::${codepipeline-bucket}/*"
       ],
-      "Action":[
+      "Action": [
         "s3:PutObject",
         "s3:GetObject",
         "s3:GetObjectVersion",
@@ -33,30 +33,30 @@
       }
     },
     {
-      "Effect":"Allow",
-      "Resource":[
+      "Effect": "Allow",
+      "Resource": [
         "arn:aws:codecommit:*:${aws_account_id}:*"
       ],
-      "Action":[
+      "Action": [
         "codecommit:GitPull"
       ]
     },
     {
-      "Effect":"Allow",
-      "Action":[
+      "Effect": "Allow",
+      "Action": [
         "codebuild:CreateReportGroup",
         "codebuild:CreateReport",
         "codebuild:UpdateReport",
         "codebuild:BatchPutTestCases"
       ],
-      "Resource":[
+      "Resource": [
         "arn:aws:codebuild:*:${aws_account_id}:report-group/*"
       ]
     },
     {
-      "Effect":"Allow",
+      "Effect": "Allow",
       "Resource": "*",
-      "Action":[
+      "Action": [
         "ec2:CreateNetworkInterface",
         "ec2:DescribeDhcpOptions",
         "ec2:DescribeNetworkInterfaces",

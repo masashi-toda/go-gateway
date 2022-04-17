@@ -1,4 +1,4 @@
-resource "aws_dynamodb_table" "terraform-state-lock" {
+resource "aws_dynamodb_table" "terraform_state" {
   name           = var.dynamodb_table
   billing_mode   = "PROVISIONED"
   read_capacity  = 1
@@ -11,7 +11,7 @@ resource "aws_dynamodb_table" "terraform-state-lock" {
   }
 
   lifecycle {
-    #prevent_destroy = true
+    prevent_destroy = true
   }
 
   tags = {

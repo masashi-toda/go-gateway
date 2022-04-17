@@ -1,19 +1,7 @@
-output "app_alb_dns" {
-  value = module.ecr_api_server.api_server_alb_dns_name
-}
-
-output "app_nlb_dns" {
-  value = module.ecr_api_server.api_server_nlb_dns_name
-}
-
-output "app_ecs_cluster_name" {
-  value = module.ecr_api_server.api_server_ecs_cluster_name
-}
-
-output "app_ecr_repository_arn" {
-  value = module.ecr_api_server.api_server_ecr_arn
-}
-
-output "app_ecr_repository_url" {
-  value = module.ecr_api_server.api_server_ecr_repository_url
+output "outputs" {
+  value = {
+    alb_dns = module.alb.dns_name
+    nlb_dns = module.nlb.dns_name
+    ecr_repo_url = module.ecr.repository_url
+  }
 }

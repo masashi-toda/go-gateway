@@ -1,13 +1,13 @@
 resource "aws_codepipeline" "app" {
-  name     = "${var.app_name}-bluegreen-deploy"
+  name     = "${var.name_prefix}-bluegreen-deploy"
   role_arn = aws_iam_role.codepipeline.arn
 
   artifact_store {
-    location = aws_s3_bucket.codepipeline-artifacts.id
+    location = aws_s3_bucket.codepipeline_artifacts.id
     type     = "S3"
   }
 
-/*
+  /*
   stage {
     name = "Source"
     action {
@@ -98,7 +98,7 @@ resource "aws_codepipeline" "app" {
           {
             name  = "BUCKET_NAME"
             type  = "PLAINTEXT"
-            value = aws_s3_bucket.codepipeline-artifacts.id
+            value = aws_s3_bucket.codepipeline_artifacts.id
           },
           {
             name  = "PIPELINE_EXECUTION_ID"
@@ -118,3 +118,8 @@ resource "aws_codepipeline" "app" {
 
   tags = var.tags
 }
+
+
+data "aws_region" "current" {}
+
+data "aws_caller_identity" "current" {}

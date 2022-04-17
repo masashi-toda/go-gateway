@@ -2,7 +2,7 @@
 # ECS Task
 ################################################
 resource "aws_iam_role" "ecs_task_execution" {
-  name = "${var.app_name}-ecsTaskExecutionRole"
+  name = "${var.container_name}-ecsTaskExecutionRole"
   assume_role_policy = jsonencode({
     Version = "2012-10-17",
     Statement = [
@@ -29,8 +29,11 @@ resource "aws_iam_role_policy_attachment" "ecs_task_exec_logs" {
   policy_arn = "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"
 }
 
+################################################
+# Firelens Task
+################################################
 resource "aws_iam_role_policy" "firelens_task" {
-  name = "${var.app_name}-firelensRolePolicy"
+  name = "${var.container_name}-firelensRolePolicy"
   role = aws_iam_role.ecs_task_execution.id
 
   policy = jsonencode({
@@ -56,7 +59,7 @@ resource "aws_iam_role_policy" "firelens_task" {
 # Kinesis Firehose
 ################################################
 resource "aws_iam_role" "firehose_role" {
-  name = "${var.app_name}-firehoseRole"
+  name = "${var.container_name}-firehoseRole"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17",
@@ -74,7 +77,7 @@ resource "aws_iam_role" "firehose_role" {
 }
 
 resource "aws_iam_role_policy" "firehose_role_policy" {
-  name = "${var.app_name}-firehoseRolePolicy"
+  name = "${var.container_name}-firehoseRolePolicy"
   role = aws_iam_role.firehose_role.id
 
   policy = jsonencode({
@@ -92,8 +95,8 @@ resource "aws_iam_role_policy" "firehose_role_policy" {
           "s3:PutObject"
         ],
         Resource = [
-          "${aws_s3_bucket.app-logs.arn}",
-          "${aws_s3_bucket.app-logs.arn}/*"
+          "${aws_s3_bucket.app_logs.arn}",
+          "${aws_s3_bucket.app_logs.arn}/*"
         ]
       },
       {
@@ -108,89 +111,4 @@ resource "aws_iam_role_policy" "firehose_role_policy" {
       }
     ]
   })
-}
-
-################################################
-# CodeBuild
-################################################
-resource "aws_iam_role" "codebuild" {
-  name = "${var.app_name}-codebuildAssumeRole"
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17",
-    Statement = [
-      {
-        Action = "sts:AssumeRole",
-        Effect = "Allow",
-        Principal = {
-          Service = "codebuild.amazonaws.com"
-        }
-      }
-    ]
-  })
-
-  tags = var.tags
-}
-
-resource "aws_iam_role_policy" "codebuild" {
-  name = "${var.app_name}-codebuildRolePolicy"
-  policy = templatefile("${path.module}/templates/codebuild-policy.json",
-    {
-      aws_account_id      = data.aws_caller_identity.current.account_id
-      codepipeline-bucket = aws_s3_bucket.codepipeline-artifacts.id
-    }
-  )
-  role  = aws_iam_role.codebuild.id
-}
-
-################################################
-# CodeDeploy
-################################################
-resource "aws_iam_role" "codedeploy" {
-  name = "${var.app_name}-codedeployAssumeRole"
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17",
-    Statement = [
-      {
-        Action = "sts:AssumeRole",
-        Effect = "Allow",
-        Principal = {
-          Service = "codedeploy.amazonaws.com"
-        }
-      }
-    ]
-  })
-
-  tags = var.tags
-}
-
-resource "aws_iam_role_policy_attachment" "codedeploy" {
-  policy_arn = "arn:aws:iam::aws:policy/AWSCodeDeployRoleForECS"
-  role       = aws_iam_role.codedeploy.name
-}
-
-################################################
-# CodePipeline
-################################################
-resource "aws_iam_role" "codepipeline" {
-  name = "${var.app_name}-codepipelineAssumeRole"
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17",
-    Statement = [
-      {
-        Action = "sts:AssumeRole",
-        Effect = "Allow",
-        Principal = {
-          Service = "codepipeline.amazonaws.com"
-        }
-      }
-    ]
-  })
-
-  tags = var.tags
-}
-
-resource "aws_iam_role_policy" "codepipeline" {
-  name = "${var.app_name}-codepipelineRolePolicy"
-  policy = templatefile("${path.module}/templates/codepipeline-policy.json", {})
-  role   = aws_iam_role.codepipeline.id
 }

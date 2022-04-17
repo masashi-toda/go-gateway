@@ -2,43 +2,32 @@
 .DEFAULT_GOAL := help
 
 # Load env file
-ENV ?= dev
-env ?= ./envs/$(ENV).env
-include $(env)
-export $(shell sed 's/=.*//' $(env))
+ENV     ?= dev
+envfile ?= ./tfvars/$(ENV).tfvars
+include $(envfile)
+#export $(shell sed 's/=.*//' $(envfile))
 
 # -----------------------------------------------------------------
 #    ENV VARIABLE
 # -----------------------------------------------------------------
-GROUP      ?= learning
-APP        ?= go-gateway
-
-AWS_ACCOUNT_ID ?=# default empty
-AWS_PROFILE    ?= go-gateway
-AWS_REGION     ?= ap-northeast-1
-
-TF_DYNAMODB_TABLE ?= $(GROUP)-$(APP)-terraform-state-lock
-TF_S3_BUCKET      ?= terraform-$(GROUP)-$(APP)
-TF_KEY            ?= terraform.tfstate/$(GROUP)-$(APP)-$(ENV)
+tf_bk_dynamo_table := "$(group)-$(app)-terraform-state-lock"
+tf_bk_s3_bucket    := "terraform-$(group)-$(app)"
+tf_bk_key          := "terraform.tfstate/$(group)-$(app)-$(ENV)"
 
 # Terraform settings
-TFM_BK_VARS   = -var 'aws_profile=$(AWS_PROFILE)' \
-                -var 'aws_region=$(AWS_REGION)' \
-                -var 's3_bucket=$(TF_S3_BUCKET)' \
-                -var 'dynamodb_table=$(TF_DYNAMODB_TABLE)'
+tf_bk_vars   = -var aws_profile=$(aws_profile) \
+               -var aws_region=$(aws_region) \
+               -var s3_bucket=$(tf_bk_s3_bucket) \
+               -var dynamodb_table=$(tf_bk_dynamo_table)
 
-TFM_BK_CONFIG = -backend=true \
-                -backend-config='region=$(AWS_REGION)' \
-                -backend-config='bucket=$(TF_S3_BUCKET)' \
-                -backend-config='key=$(TF_KEY)' \
-                -backend-config='dynamodb_table=$(TF_DYNAMODB_TABLE)' \
-                -backend-config='encrypt=true'
+tf_bk_config = -backend=true \
+               -backend-config="region=$(aws_region)" \
+               -backend-config="bucket=$(tf_bk_s3_bucket)" \
+               -backend-config="dynamodb_table=$(tf_bk_dynamo_table)" \
+               -backend-config="key=$(tf_bk_key)" \
+               -backend-config="encrypt=true"
 
-TFM_VARS      = -var 'aws_profile=$(AWS_PROFILE)' \
-                -var 'aws_region=$(AWS_REGION)' \
-                -var 'group=$(GROUP)' \
-                -var 'app=$(APP)' \
-                -var 'environment=$(ENV)'
+tf_opts = -var-file=$(envfile) -var="env=$(ENV)"
 
 # -----------------------------------------------------------------
 #    Main targets
@@ -46,34 +35,40 @@ TFM_VARS      = -var 'aws_profile=$(AWS_PROFILE)' \
 
 .PHONY: env
 env: ## Print useful environment variables to stdout
-	@echo AWS_ACCOUNT_ID = $(AWS_ACCOUNT_ID)
-	@echo AWS_PROFILE = $(AWS_PROFILE)
-	@echo AWS_REGION = $(AWS_REGION)
-	@echo TFM_VARS = $(TFM_VARS)
+	@echo aws_profile  = $(aws_profile)
+	@echo aws_region   = $(aws_region)
+	@echo tf_bk_vars   = $(tf_bk_vars)
+	@echo tf_bk_config = $(tf_bk_config)
+	@echo tf_opts      = $(tf_opts)
+
+.PHONY: clean
+clean: ## Clean terraform temporary files
+	@rm -rf .terraform
+	@rm -rf */.terraform
 
 .PHONY: terraform-setup
-terraform-setup: ## Setup terraform backend configuration
-	@cd backend && terraform init $(TFM_BK_VARS) && terraform apply $(TFM_BK_VARS) && cd ..
+terraform-setup: clean ## Setup terraform backend configuration
+	@cd backend && terraform init $(tf_bk_vars) && terraform apply $(tf_bk_vars) && cd ..
 
 .PHONY: terraform-init
 terraform-init: ## Init terraform (with reconfigure)
-	@terraform init $(TFM_VARS) $(TFM_BK_CONFIG) -reconfigure
+	@terraform init $(tf_opts) $(tf_bk_config) -reconfigure
 
 .PHONY: terraform-init-upgrade
 terraform-init-upgrade: ## Init terraform (with upgrade)
-	@terraform init $(TFM_VARS) $(TFM_BK_CONFIG) -upgrade
+	@terraform init $(tf_opts) $(tf_bk_config) -upgrade
 
 .PHONY: terraform-plan
-terraform-plan: ## Plan terraform
-	@terraform plan $(TFM_VARS)
+terraform-plan: terraform-init ## Plan terraform
+	@terraform plan $(tf_opts)
 
 .PHONY: terraform-apply
-terraform-apply: ## Apply terraform
-	@terraform apply $(TFM_VARS)
+terraform-apply: terraform-init ## Apply terraform
+	@terraform apply $(tf_opts)
 
 .PHONY: terraform-destroy
-terraform-destroy: ## Destroy terraform
-	@terraform destroy $(TFM_VARS)
+terraform-destroy: terraform-init ## Destroy terraform
+	@terraform destroy $(tf_opts)
 
 .PHONY: help
 help: env

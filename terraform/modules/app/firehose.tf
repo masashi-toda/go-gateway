@@ -1,10 +1,10 @@
 resource "aws_kinesis_firehose_delivery_stream" "firelens" {
-  name        = "${var.app_name}-deliverystream"
+  name        = "${var.container_name}-deliverystream"
   destination = "s3"
 
   s3_configuration {
     role_arn        = aws_iam_role.firehose_role.arn
-    bucket_arn      = aws_s3_bucket.app-logs.arn
+    bucket_arn      = aws_s3_bucket.app_logs.arn
     buffer_size     = 2
     buffer_interval = 60
 
